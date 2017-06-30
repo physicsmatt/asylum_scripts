@@ -41,7 +41,7 @@ Window panelphase() : Panel
 	CheckBox OverwriteCheckBox,value= 0,variable= root:Images:overwritechecked, value=1
 	PopupMenu layermenu,pos={290,150},size={103,21},proc=PopMenuProc,title="Pick a layer"
 	PopupMenu layermenu,help={"Selects the layer to extract and save to .TIFF"}
-	PopupMenu layermenu,mode=4,popvalue="3",value= #"\"1;2;3;4;5;6\""
+	PopupMenu layermenu,mode=4,popvalue="3",value= #"\"1;2;3;4;5;6;7;8;9;10;11;12\"" //line modified by Nate June 26th, 2008 so that layer 1-12 can be selected instead of layers 1-6
 	SetVariable Setvar1,value=location,limits={0,0,0},pos={10,275},size={426,25}
 	doupdate
 EndMacro
@@ -51,7 +51,7 @@ Function GoProc(ctrlName) : ButtonControl
 	Variable i
 	Wave/T listwave
 	Wave listwavebuddy
-	Variable listsize= dimsize(listwave, 0)
+	Variable listsize= dimsize(listwave,0)
 	Make/T/O/N=(listsize) failedlist
 	NVAR wavenameschecked
 	Variable size = dimsize(listwavebuddy,0)
