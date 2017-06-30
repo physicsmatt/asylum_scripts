@@ -1,116 +1,178 @@
 #pragma rtGlobals=1		// Use modern global access method.
-#include ":AsylumResearch:Code3D:Initialization"
-
-
-	StartMeUp()
-
-function LoadUserFunc()		//this loads the user functions
-
-	PathInfo Igor
-	
-	NewPath/O/Q UserProcPath S_path+"AsylumResearch:Code3D:UserProcs:"
-	string procStr
-	string procList = IndexedFile(UserProcPath,-1,".ipf")
-
-
-	Prompt procStr, "Which user procedure do you want to load?", popup, procList
-	DoPrompt "Load User Procedure", procStr
-	
-	if (V_flag)
-		return 1
-	endif
-	
-	procStr = procStr[0,strsearch(procStr,".ipf",0)-1]
-	Execute/P "DELETEINCLUDE \":AsylumResearch:Code3D:Initialization\""		//remove this so that
-	Execute/P "INSERTINCLUDE \":AsylumResearch:Code3D:UserProcs:"+procStr+"\""			//this procedure will compile first
-	Execute/P "INSERTINCLUDE \":AsylumResearch:Code3D:CompileHelper\""	//this has functions that the user functions need to compile
-	Execute/P "COMPILEPROCEDURES "											//compile
-	Execute/P "INSERTINCLUDE \":AsylumResearch:Code3D:Initialization\""		//reload the normal software
-	Execute/P "DELETEINCLUDE \":AsylumResearch:Code3D:CompileHelper\""	//we don't need this now
-	Execute/P "COMPILEPROCEDURES "											//recompile
-	
-	Execute/P/Q "Init"+procStr+"()"			//this does any initialization that the new procedure needs
-
-end //LoadUserFunc
-
-function RemoveUserFunc(procStr)		//this unloads the user functions
-	string procStr
-
-	Execute/P "DELETEINCLUDE \":AsylumResearch:Code3D:UserProcs:"+procStr+"\""		//remove the MainUser procedure
-	Execute/P "COMPILEPROCEDURES "										//and recompile
-	
-end //RemoveUserFunc
 
 Window panelphase() : Panel
+	SetDataFolder "root:Images"
+	String waves = WaveList("*",";","Text:0,Dims:3")
+	Variable numitems=itemsinlist(waves)
+	newdatafolder/O/S :phase
+	Make/T/O/N=(numitems) listwave
+	if (numitems>=1)
+		makewaves(listwave,waves,i)
+	else
+		print "no opened pictures!"
+		Make/T/O/N=1 listwave
+		listwave[0]="Load an image into memory"
+	endif
 	Variable/G wavenameschecked=0
 	Variable/G overwriteChecked=0
-	Variable/G selectedlayer=4
-	makewaves()
+	Variable/G selectedlayer=3
+	String/G location ="C:\\Research Data\\Images\\Summer Research Group"
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(1505,292,1935,618)
+	NewPanel /W=(1505,292,1975,620)
+	DoWindow Layer_Extract
+	if (V_flag)
+		DoWindow/K Layer_Extract
+	endif
 	DoWindow/C Layer_Extract
 	ShowTools
 	SetDrawLayer UserBack
 	SetDrawEnv save
 	Button Gobutton,pos={6,300},size={50,20},proc=GoProc,title="Go"
-	ListBox waveslistbox,pos={10,5},size={375,257},proc=ListBoxProc,frame=2
-	ListBox waveslistbox,listWave=listwaves
-	ListBox waveslistbox,selWave=waveselect,mode= 3
+	ListBox waveslistbox,pos={10,5},size={265,255},proc=ListBoxProc,frame=2
+	ListBox waveslistbox,listWave=listwave
+	ListBox waveslistbox,selWave=listwavebuddy,mode= 3
 	Button Cancelbutton,pos={75,300},size={50,20},proc=CancelbuttonProc,title="Cancel"
 	Button Helpbutton,pos={200,300},size={50,20},proc=HelpButton,title="Help"
 	Button Helpbutton,help={"Displays the help for this panel"}
-	CheckBox UseWaveNameCheckBox,pos={5,275},size={134,14},proc=wavenamescheck,title="Write with wave names?"
+	CheckBox UseWaveNameCheckBox,pos={290,15},size={134,14},proc=wavenamescheck,title="Write with wave names?"
 	CheckBox UseWaveNameCheckBox,help={"If checked, will use the wave name as the name of the wave"}
-	CheckBox UseWaveNameCheckBox,variable= root:Images:iVar
-	CheckBox OverwriteCheckBox,pos={155,275},size={105,14},proc=OverwriteCheck,title="Overwrite images?"
-	CheckBox OverwriteCheckBox,value= 0
-	PopupMenu layermenu,pos={270,275},size={103,21},proc=PopMenuProc,title="Pick a layer"
+	CheckBox UseWaveNameCheckBox,variable= root:Images:wavenameschecked, value=1
+	CheckBox OverwriteCheckBox,pos={310,35},size={105,14},proc=OverwriteCheck,title="Overwrite images?"
+	CheckBox OverwriteCheckBox,value= 0,variable= root:Images:overwritechecked, value=1
+	PopupMenu layermenu,pos={290,150},size={103,21},proc=PopMenuProc,title="Pick a layer"
 	PopupMenu layermenu,help={"Selects the layer to extract and save to .TIFF"}
-	PopupMenu layermenu,mode=4,popvalue="4",value= #"\"1;2;3;4;5;6\""
+	PopupMenu layermenu,mode=4,popvalue="3",value= #"\"1;2;3;4;5;6\""
+	SetVariable Setvar1,value=location,limits={0,0,0},pos={10,275},size={426,25}
+	doupdate
 EndMacro
 
 Function GoProc(ctrlName) : ButtonControl
 	String ctrlName
-	print ctrlName
-
+	Variable i
+	Wave/T listwave
+	Wave listwavebuddy
+	Variable listsize= dimsize(listwave, 0)
+	Make/T/O/N=(listsize) failedlist
+	NVAR wavenameschecked
+	Variable size = dimsize(listwavebuddy,0)
+	Variable numberfailed=0
+	Variable failed
+	for(i=0;i<size;i+=1)
+		failed=0
+		if (listwavebuddy[i]==1)
+			if (wavenameschecked)
+				failed=savephase(listwave[i],savename=listwave[i])
+			else
+				failed=savephase(listwave[i])
+			endif
+			if (failed==1)
+				numberfailed+=1
+				failedlist[numberfailed-1]=(listwave[i])
+			endif
+		endif
+	endfor
+	if (numberfailed > 0)
+		print ""
+		print "The waves that failed were:"
+		print failedlist
+		print "Please open manually"
+	else
+		print ""
+		print "no waves failed"
+	endif
+	Killwaves failedlist
+	Layercleanup()
 End
 
-Function makewaves()
-	String waves = WaveList("*",";","Text:0,Dims:3")
-	Variable numitems=itemsinlist(waves)
+Function makewaves(listwaves,waves,number)
+	Wave/t listwaves
+	Variable number
+	String waves
 	Variable i
-	print waves
-	Make/T/O/N=(numitems) listwaves
-	Make/T/O/N=(numitems) wavesselect
-	if (numitems>=1)
-		for(i=0;i<numitems;i+=1)
-			listwaves[i]=StringFromList(i,waves)
-		endfor
-	else
-		print "no opened pictures!"
-		listwaves[0]="empty"
-	endif
+	SetDataFolder "root:Images"
+	for(i=0;i<number;i+=1)
+		listwaves[i]=StringFromList(i,waves)
+	endfor
 end
 
 
-function savephase()
-	string name
-	String waves = WaveList("*",";","Text:0,Dims:3")
-	prompt name, "Please enter the name of the wave", popup waves
-	doprompt "wave", name
+function savephase(name,[savename])
+	String name
+	String savename
+	SVAR location
+	NewPath/C/O/Q path location
+	NVAR selectedlayer
+	NVAR wavenameschecked
+	NVAR overwriteChecked
+	Variable failed=0
+	print "Scooty Rocks!"
 	if (Cmpstr(name,"")!=0)
 		if (waveexists($name))
 			Wave image=$name
 			Make/O/N=(dimsize($name,0),dimsize($name,1)) new
-			new = image[p][q][4]
-			ImageTransform flipCols new
-			ImageSave/F/I/O/D=16/T="tiff" new
+			try
+				new = image[p][q][selectedlayer-1]
+				ImageTransform flipCols new
+				if(ParamisDefault(savename))
+					ImageSave/F/D=16/T="tiff"/P=path new 
+				else
+					if(overwriteChecked)
+						ImageSave/F/O/D=16/T="tiff"/P=path new (savename+".tif")
+					else
+						ImageSave/F/D=16/T="tiff"/P=path new savename
+					endif
+				endif
+				print name, "layer", selectedlayer, " save completed"
+			catch
+				print name, " has too few layers for that selection.  Excluding and continuing"
+				failed=1
+			endtry
 		else
-			print "no such wave exists"
+			try
+				print "Trying to load  ",name,"..."
+				//SetDataFolder "root:Images"
+				//LoadData/D/Q/P=Loadpath/J=(name)
+				Loadwave/Q/P=Loadpath/N=name (name+".ibw")
+				//SetDataFolder "root:Images:phase"
+				if (waveexists($name))
+					print "load successfull."
+					Wave image=$name
+					Make/O/N=(dimsize($name,0),dimsize($name,1)) new
+					try
+						new = image[p][q][selectedlayer-1]
+						ImageTransform flipCols new
+						if(ParamisDefault(savename))
+							ImageSave/F/D=16/T="tiff"/P=path new 
+						else
+							if(overwriteChecked)
+								ImageSave/F/O/D=16/T="tiff"/P=path new (savename+".tif")
+							else
+								ImageSave/F/D=16/T="tiff"/P=path new savename
+							endif
+						endif
+						print name, "layer", selectedlayer, " save completed"
+					catch
+						print name, " has too few layers for that selection.  Excluding and continuing"
+						failed=1
+					endtry
+				else
+					print "Loaded, but error in file, please open into memory manually.  File: ",name
+					failed=1
+				endif
+			catch
+				print "no such wave exists"
+				failed=1
+			endtry
 		endif
 	else
-		print "Canceled"
+		print "null string name"
+		failed=1
 	endif
+	if (failed==1)
+	else
+		KillWaves new
+	endif
+	return failed
 end
 
 
@@ -138,6 +200,11 @@ Function wavenamescheck(ctrlName,checked) : CheckBoxControl
 	String ctrlName
 	Variable checked
 	NVAR wavenameschecked=checked
+	if (checked)
+		ModifyControl Overwritecheckbox disable=0
+	else
+		ModifyControl Overwritecheckbox disable=1
+	endif
 
 End
 
@@ -153,15 +220,14 @@ Function PopMenuProc(ctrlName,popNum,popStr) : PopupMenuControl
 	String ctrlName
 	Variable popNum
 	String popStr
-	NVAR selectedlayer = :root:selectedlayer
+	NVAR selectedlayer
 	selectedlayer=(str2num(popStr))
 End
 
 Function Layercleanup()
-	DoWindow/k Layer_Extract
-	KillVariables selectedlayer
-	KillVariables wavenameschecked
-	KillVariables overwriteChecked
-	KillWaves listwaves
-	KillWaves wavesselect
+	killvariables root:Images:wavenameschecked
+	killvariables root:Images:overwriteChecked
+	killvariables root:Images:selectedlayer
+	Dowindow/K layer_extract
+	killdatafolder root:Images:phase
 end
