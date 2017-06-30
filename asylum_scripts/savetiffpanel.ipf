@@ -1,4 +1,4 @@
-#pragma rtGlobals=1		// Use modern global access method.
+#pragma rtGlobals=3		// Use modern global access method.
 
 Window panelphase() : Panel
 	SetDataFolder "root:Images"
@@ -6,17 +6,28 @@ Window panelphase() : Panel
 	Variable numitems=itemsinlist(waves)
 	newdatafolder/O/S :phase
 	Make/T/O/N=(numitems) listwave
+	Make/O/N=(numitems) listwavebuddy///new
+	////new
+	Variable i =0
+	do
+		listwave[i]=StringFromList(i,waves)
+		i+=1
+	while (i<numitems) 	
+	print listwave
+	//endfor
+	/////
 	if (numitems>=1)
-		makewaves(listwave,waves,i)
+		//makewaves(listwave,waves,i) ///new
 	else
 		print "no opened pictures!"
 		Make/T/O/N=1 listwave
 		listwave[0]="Load an image into memory"
 	endif
+	SetDataFolder "root:Images"///new
 	Variable/G wavenameschecked=0
 	Variable/G overwriteChecked=0
-	Variable/G selectedlayer=3
-	String/G location ="C:\\Research Data\\Images\\Summer Research Group"
+	Variable/G selectedlayer=7///new, was 3
+	String/G location ="Z:/Greg Hamilton/Summer 2014"//C:\\Research Data\\Images\\Summer Research Group" //new
 	PauseUpdate; Silent 1		// building window...
 	NewPanel /W=(1505,292,1975,620)
 	DoWindow Layer_Extract
@@ -41,16 +52,19 @@ Window panelphase() : Panel
 	CheckBox OverwriteCheckBox,value= 0,variable= root:Images:overwritechecked, value=1
 	PopupMenu layermenu,pos={290,150},size={103,21},proc=PopMenuProc,title="Pick a layer"
 	PopupMenu layermenu,help={"Selects the layer to extract and save to .TIFF"}
-	PopupMenu layermenu,mode=4,popvalue="3",value= #"\"1;2;3;4;5;6;7;8;9;10;11;12\"" //line modified by Nate June 26th, 2008 so that layer 1-12 can be selected instead of layers 1-6
+	PopupMenu layermenu,mode=4,popvalue="7",value= #"\"1;2;3;4;5;6;7;8;9;10;11;12\"" //line modified by Nate June 26th, 2008 so that layer 1-12 can be selected instead of layers 1-6 //also popvalue was 7
 	SetVariable Setvar1,value=location,limits={0,0,0},pos={10,275},size={426,25}
 	doupdate
 EndMacro
 
 Function GoProc(ctrlName) : ButtonControl
 	String ctrlName
+	SetDataFolder "root:Images"///new
 	Variable i
 	Wave/T listwave
+	print listwave
 	Wave listwavebuddy
+	print listwavebuddy
 	Variable listsize= dimsize(listwave,0)
 	Make/T/O/N=(listsize) failedlist
 	NVAR wavenameschecked
@@ -78,7 +92,7 @@ Function GoProc(ctrlName) : ButtonControl
 		print "Please open manually"
 	else
 		print ""
-		print "no waves failed"
+		print "Great Success"
 	endif
 	Killwaves failedlist
 	Layercleanup()
@@ -99,13 +113,14 @@ end
 function savephase(name,[savename])
 	String name
 	String savename
+	SetDataFolder "root:Images"///new
 	SVAR location
 	NewPath/C/O/Q path location
 	NVAR selectedlayer
 	NVAR wavenameschecked
 	NVAR overwriteChecked
 	Variable failed=0
-	print "Scooty Rocks!"
+	
 	if (Cmpstr(name,"")!=0)
 		if (waveexists($name))
 			Wave image=$name
@@ -114,12 +129,12 @@ function savephase(name,[savename])
 				new = image[p][q][selectedlayer-1]
 				ImageTransform flipCols new
 				if(ParamisDefault(savename))
-					ImageSave/F/D=16/T="tiff"/P=path new 
+					ImageSave/F/D=32/T="tiff"/P=path new 
 				else
 					if(overwriteChecked)
-						ImageSave/F/O/D=16/T="tiff"/P=path new (savename+".tif")
+						ImageSave/F/O/D=32/T="tiff"/P=path new (savename+".tif")
 					else
-						ImageSave/F/D=16/T="tiff"/P=path new savename
+						ImageSave/F/D=32/T="tiff"/P=path new savename
 					endif
 				endif
 				print name, "layer", selectedlayer, " save completed"
@@ -142,12 +157,12 @@ function savephase(name,[savename])
 						new = image[p][q][selectedlayer-1]
 						ImageTransform flipCols new
 						if(ParamisDefault(savename))
-							ImageSave/F/D=16/T="tiff"/P=path new 
+							ImageSave/F/D=32/T="tiff"/P=path new 
 						else
 							if(overwriteChecked)
-								ImageSave/F/O/D=16/T="tiff"/P=path new (savename+".tif")
+								ImageSave/F/O/D=32/T="tiff"/P=path new (savename+".tif")
 							else
-								ImageSave/F/D=16/T="tiff"/P=path new savename
+								ImageSave/F/D=32/T="tiff"/P=path new savename
 							endif
 						endif
 						print name, "layer", selectedlayer, " save completed"
@@ -193,12 +208,14 @@ End
 Function OverwriteCheck(ctrlName,checked) : CheckBoxControl
 	String ctrlName
 	Variable checked
+	SetDataFolder "root:Images"//new
 	NVAR overwriteChecked=checked
 End
 
 Function wavenamescheck(ctrlName,checked) : CheckBoxControl
 	String ctrlName
 	Variable checked
+	SetDataFolder "root:Images"///new
 	NVAR wavenameschecked=checked
 	if (checked)
 		ModifyControl Overwritecheckbox disable=0
@@ -220,11 +237,14 @@ Function PopMenuProc(ctrlName,popNum,popStr) : PopupMenuControl
 	String ctrlName
 	Variable popNum
 	String popStr
+	SetDataFolder "root:Images"
 	NVAR selectedlayer
 	selectedlayer=(str2num(popStr))
+	print selectedlayer
 End
 
 Function Layercleanup()
+SetDataFolder "root:Images"
 	killvariables root:Images:wavenameschecked
 	killvariables root:Images:overwriteChecked
 	killvariables root:Images:selectedlayer
